@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon TCG Card Viewer</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #ef4444;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            padding: 2rem 1rem;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: #fca5a5;
+        }
+
+        header p {
+            color: var(--text-muted);
+        }
+
+        .search-bar {
+            display: flex;
+            gap: 0.5rem;
+            max-width: 500px;
+            margin: 0 auto 2rem;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            background-color: var(--card-bg);
+            color: var(--text);
+            font-size: 1rem;
+            outline: none;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent);
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            background-color: var(--accent);
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s, opacity 0.2s;
+        }
+
+        button:hover {
+            background-color: #dc2626;
+        }
+
+        button:disabled {
+            background-color: #475569;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .status {
+            text-align: center;
+            font-size: 1.1rem;
+            margin: 2rem 0;
+            color: var(--text-muted);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card-item {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid #334155;
+        }
+
+        .card-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .card-item img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            background-color: #0f172a;
+        }
+
+        .card-info {
+            width: 100%;
+            text-align: left;
+        }
+
+        .card-info h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .card-info p {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 0.2rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            background-color: #334155;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+
+        .load-more-container {
+            text-align: center;
+            margin-top: 2.5rem;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Pokémon TCG Card Viewer</h1>
+            <p>Search and explore Pokémon cards</p>
+        </header>
+
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Enter Pokémon name (e.g., Charizard)..." value="Pikachu" />
+            <button id="searchBtn">Search</button>
+        </div>
+
+        <div id="status" class="status">Loading cards...</div>
+        <div id="cardGrid" class="grid"></div>
+
+        <div class="load-more-container">
+            <button id="loadMoreBtn" class="hidden">Load More</button>
+        </div>
+    </div>
+
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const cardGrid = document.getElementById('cardGrid');
+        const status = document.getElementById('status');
+        const loadMoreBtn = document.getElementById('loadMoreBtn');
+
+        let currentQuery = '';
+        let currentPage = 1;
+        const pageSize = 20;
+        let totalCardsCount = 0;
+        let loadedCardsCount = 0;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            handleSearch();
+        });
+
+        searchBtn.addEventListener('click', handleSearch);
+
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSearch();
+        });
+
+        loadMoreBtn.addEventListener('click', () => {
+            currentPage++;
+            fetchCards(currentQuery, currentPage, true);
+        });
+
+        function handleSearch() {
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            currentQuery = query;
+            currentPage = 1;
+            loadedCardsCount = 0;
+            cardGrid.innerHTML = '';
+            loadMoreBtn.classList.add('hidden');
+
+            fetchCards(currentQuery, currentPage, false);
+        }
+
+        const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+        async function fetchWithRetry(url, retries = 5, backoff = 1000, onRetry = null) {
+            for (let attempt = 1; attempt <= retries; attempt++) {
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    if (attempt === retries) {
+                        throw error;
+                    }
+
+                    if (onRetry) {
+                        onRetry(attempt, retries, backoff);
+                    }
+
+                    await delay(backoff);
+                    backoff *= 2;
+                }
+            }
+        }
+
+        async function fetchCards(pokemonName, page = 1, isAppend = false) {
+            const updateStatusText = (text) => {
+                status.textContent = text;
+                if (isAppend) loadMoreBtn.textContent = text;
+            };
+
+            if (isAppend) {
+                loadMoreBtn.disabled = true;
+                loadMoreBtn.textContent = 'Loading...';
+            } else {
+                status.textContent = 'Searching cards...';
+            }
+
+            const url = `https://api.pokemontcg.io/v2/cards?q=name:"${encodeURIComponent(pokemonName)}*"&page=${page}&pageSize=${pageSize}`;
+
+            try {
+                const data = await fetchWithRetry(url, 5, 1000, (attempt, maxRetries, currentBackoff) => {
+                    updateStatusText(`Connection issue. Retrying (${attempt}/${maxRetries}) in ${currentBackoff / 1000}s...`);
+                });
+
+                const cards = data.data;
+                totalCardsCount = data.totalCount;
+                loadedCardsCount += cards.length;
+
+                if (cards.length === 0 && !isAppend) {
+                    status.textContent = `No cards found for "${pokemonName}".`;
+                    loadMoreBtn.classList.add('hidden');
+                    return;
+                }
+
+                status.textContent = `Showing ${loadedCardsCount} of ${totalCardsCount} card(s) for "${pokemonName}"`;
+                renderCards(cards);
+
+                if (loadedCardsCount < totalCardsCount) {
+                    loadMoreBtn.classList.remove('hidden');
+                    loadMoreBtn.disabled = false;
+                    loadMoreBtn.textContent = 'Load More';
+                } else {
+                    loadMoreBtn.classList.add('hidden');
+                }
+
+            } catch (error) {
+                console.error('Error fetching cards after retries:', error);
+                status.textContent = 'Failed to load cards after multiple attempts. Please check your internet connection.';
+                loadMoreBtn.classList.add('hidden');
+            }
+        }
+
+        function renderCards(cards) {
+            cards.forEach(card => {
+                const cardElement = document.createElement('div');
+                cardElement.className = 'card-item';
+
+                const name = card.name || 'Unknown';
+                const imageUrl = card.images ? card.images.small : '';
+                const setName = card.set ? card.set.name : 'Unknown Set';
+                const rarity = card.rarity || 'Common';
+                const artist = card.artist || 'Unknown Artist';
+
+                cardElement.innerHTML = `
+          <img src="${imageUrl}" alt="${name}" loading="lazy" />
+          <div class="card-info">
+            <h3>${name}</h3>
+            <p><strong>Set:</strong> ${setName}</p>
+            <p><strong>Artist:</strong> ${artist}</p>
+            <span class="badge">${rarity}</span>
+          </div>
+        `;
+
+                cardGrid.appendChild(cardElement);
+            });
+        }
+    </script>
+</body>
+
+</html>
