@@ -4,8 +4,6 @@
 <head>
     <meta charset="UTF-8">
     <title>Google Search</title>
-
-    <!-- Google-style font (Roboto) – falls back to Arial / sans-serif -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
 
     <style>
@@ -49,19 +47,17 @@
             background-position: center;
         }
 
-        /* Hide H2 visually but keep for accessibility */
         .search-wrapper h2 {
             position: absolute;
             left: -9999px;
             font-size: 0;
         }
 
-        /* Search box container */
         .gcse-search {
             width: 100%;
             max-width: 560px;
         }
-        
+
         .footer {
             position: fixed;
             bottom: 12px;
@@ -85,20 +81,15 @@
 
 <body>
     <div class="search-wrapper">
-        <!-- Accessible heading -->
         <h2>GOOGLE SEARCH</h2>
-
-        <!-- Logo -->
         <span class="logo" aria-label="Google"></span>
-
-        <!-- Custom Search Engine -->
         <script async src="https://cse.google.com/cse.js?cx=d6d6bfacb44d04cd1"></script>
         <div class="gcse-search"></div>
     </div>
 
     <div class="footer">
         Made by Martin_MMC. © 2026
-        <a href="https://marty-games.github.io/">Marty Games</a>.
+        <a href="https://gn-sciencex.github.io/">Marty Games</a>.
     </div>
 </body>
 
